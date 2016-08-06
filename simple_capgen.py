@@ -40,7 +40,7 @@ if __name__ == '__main__':
     valid_buckets = coco_captions['valid buckets']
     wordset = coco_captions['raw wordset']
     word2idx = {}
-    ord2idx['<PAD>'] = 0
+    word2idx['<PAD>'] = 0
     word2idx['<GO>'] = 1
     word2idx['<EOS>'] = 2
     for i, w in enumerate(wordset):
