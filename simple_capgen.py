@@ -61,11 +61,6 @@ if __name__ == '__main__':
 
     bucket_minibatch_sizes = {16:128, 32:64, 64:32}
 
-    logger.info('Loading the COCO Captions training and validation sets.')
-    coco_train = COCOCaptionDataset(train_images_path, train_annotations_filepath, train_buckets,
-                                    bucket_minibatch_sizes, word2idx, mean_im, True)
-    coco_valid = COCOCaptionDataset(valid_images_path, valid_annotations_filepath, valid_buckets,
-                                    bucket_minibatch_sizes, word2idx, mean_im, False)
 
     logger.info('Creating global variables')
     HIDDEN_SIZE = 2048
@@ -76,8 +71,8 @@ if __name__ == '__main__':
     RNN_GRAD_CLIP = 32
     TOTAL_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
-    RESNET_SGDM_LR = theano.shared(np.float32(0.00005 * 2), 'resnet sgdm lr')
-    RECURR_SGDM_LR = theano.shared(np.float32(0.0005 * 2), 'recurrent sgdm lr')
+    RESNET_SGDM_LR = theano.shared(np.float32(0.0005 * 2), 'resnet sgdm lr')
+    RECURR_SGDM_LR = theano.shared(np.float32(0.005 * 2), 'recurrent sgdm lr')
     EPOCH_LR_COEFF = np.float32(0.5)
     NUM_EPOCHS = 20
 
@@ -98,9 +93,9 @@ if __name__ == '__main__':
     l_mask = lasagne.layers.InputLayer((None, None), mask_var, name="l_mask")
     l_hid = lasagne.layers.InputLayer((None, HIDDEN_SIZE), input_var=im_features, name="l_hid")
     l_emb = lasagne.layers.EmbeddingLayer(l_in, input_size=WORD_SIZE, output_size=EMBEDDING_SIZE, name="l_emb")
-    l_lstm = LSTMLayer(l_emb, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
+    l_lstm = lasagne.layers.LSTMLayer(l_emb, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
                                     outgate=gate, hid_init=l_hid, peepholes=True, grad_clipping=RNN_GRAD_CLIP,
-                                    mask_input=l_mask, name="l_lstm") # batch size, seq len, hidden size
+                                    mask_input=l_mask, precompute_input=False, name="l_lstm") # batch size, seq len, hidden size
     l_reshape = lasagne.layers.ReshapeLayer(l_lstm, (-1, [2]), name="l_reshape") # batch size * seq len, hidden size
     l_fc = lasagne.layers.DenseLayer(l_reshape, DENSE_SIZE, b=lasagne.init.Constant(5.0),
                                     nonlinearity=lasagne.nonlinearities.rectify, name="l_fc")
@@ -143,6 +138,12 @@ if __name__ == '__main__':
     logger.info("Creating the evaluation Theano function")
     eval_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
                                [deterministic_total_loss, deterministic_order_embedding_loss])
+
+    logger.info('Loading the COCO Captions training and validation sets.')
+    coco_train = COCOCaptionDataset(train_images_path, train_annotations_filepath, train_buckets,
+                                    bucket_minibatch_sizes, word2idx, mean_im, True)
+    coco_valid = COCOCaptionDataset(valid_images_path, valid_annotations_filepath, valid_buckets,
+                                    bucket_minibatch_sizes, word2idx, mean_im, False)
 
     total_loss_values = {}
     order_embedding_loss_values = {}
