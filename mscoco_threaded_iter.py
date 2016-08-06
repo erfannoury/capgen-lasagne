@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 try:
     import Queue
 except ImportError:
@@ -168,9 +168,8 @@ class COCOCaptionDataset():
             self.reset()
         if self.shuffle:
             np.random.shuffle(self.buckets[self.current_seqlen])
+        self.max_size += len(self.buckets[self.current_seqlen]) // self.bucket_minibatch_sizes[self.current_seqlen] + 1
         self.current_bucket = grouper(self.buckets[self.current_seqlen], self.bucket_minibatch_sizes[self.current_seqlen])
-        self.max_size += len(self.current_bucket)
-        self.current_bucket = (g for g in self.current_bucket)
 
     def _step(self):
         if self.n_consumed >= self.max_size:
@@ -186,10 +185,10 @@ class COCOCaptionDataset():
         return minibatch
 
 if __name__ == '__main__':
-    resnet_weights = pickle.load(open('~/modelzoo/resnet50.pkl', 'rb'))
+    resnet_weights = pickle.load(open('/home/noury/modelzoo/resnet50.pkl', 'rb'))
     mean_im = resnet_weights['mean_image'].reshape((1, 3, 224, 224)).astype(np.float32)
-    images_path = '~/datasets/mscoco/train2014'
-    annotations_file_path = '~/datasets/mscoco/annotations/captions_train2014.json'
+    images_path = '/home/noury/datasets/mscoco/train2014'
+    annotations_file_path = '/home/noury/datasets/mscoco/annotations/captions_train2014.json'
     coco_captions = pickle.load(open('coco_captions_trainval2014.pkl', 'rb'))
     train_buckets = coco_captions['train buckets']
     bucket_minibatch_sizes = {16:128, 32:64, 64:32}
