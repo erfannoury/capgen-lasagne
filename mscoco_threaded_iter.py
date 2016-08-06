@@ -186,11 +186,11 @@ class COCOCaptionDataset():
         return minibatch
 
 if __name__ == '__main__':
-    resnet_weights = pickle.load('~/modelzoo/resnet50.pkl', 'rb')
+    resnet_weights = pickle.load(open('~/modelzoo/resnet50.pkl', 'rb'))
     mean_im = resnet_weights['mean_image'].reshape((1, 3, 224, 224)).astype(np.float32)
     images_path = '~/datasets/mscoco/train2014'
     annotations_file_path = '~/datasets/mscoco/annotations/captions_train2014.json'
-    coco_captions = pickle.load('coco_captions_trainval2014.pkl', 'rb')
+    coco_captions = pickle.load(open('coco_captions_trainval2014.pkl', 'rb'))
     train_buckets = coco_captions['train buckets']
     bucket_minibatch_sizes = {16:128, 32:64, 64:32}
     wordset = coco_captions['raw wordset']
