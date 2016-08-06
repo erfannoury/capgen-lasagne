@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 try:
     import Queue
 except ImportError:
@@ -168,9 +168,8 @@ class COCOCaptionDataset():
             self.reset()
         if self.shuffle:
             np.random.shuffle(self.buckets[self.current_seqlen])
+        self.max_size += len(self.buckets[self.current_seqlen]) // self.bucket_minibatch_sizes[self.current_seqlen] + 1
         self.current_bucket = grouper(self.buckets[self.current_seqlen], self.bucket_minibatch_sizes[self.current_seqlen])
-        self.max_size += len(self.current_bucket)
-        self.current_bucket = (g for g in self.current_bucket)
 
     def _step(self):
         if self.n_consumed >= self.max_size:
