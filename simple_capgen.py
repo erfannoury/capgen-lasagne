@@ -127,7 +127,7 @@ if __name__ == '__main__':
     recurrent_grads = [T.clip(g, -TOTAL_GRAD_CLIP, TOTAL_GRAD_CLIP) for g in recurrent_grads]
     resnet_grads, resnet_norm = lasagne.updates.total_norm_constraint(resnet_grads, TOTAL_MAX_NORM, return_norm=True)
     recurrent_grads, recurrent_norm = lasagne.updates.total_norm_constraint(recurrent_grads, TOTAL_MAX_NORM, return_norm=True)
-    resnet_sgdm = lasagne.updates.nesterov_momentum(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR, momentum=0.8)
+    resnet_sgdm = lasagne.updates.sgd(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR)
     recurrent_sgdm = lasagne.updates.nesterov_momentum(recurrent_grads, recurrent_params, learning_rate=RECURR_SGDM_LR, momentum=0.9)
     sgdm_updates = OrderedDict(resnet_sgdm.items().extend(recurrent_sgdm.items()))
     
