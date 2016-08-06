@@ -39,8 +39,6 @@ class TheThread(threading.Thread):
                 self.queue.task_done()
             except IOError:
                 pass
-            # except Error:
-                # print("An error happened")
 
 class TheDataset():
     def __init__(self, mb_size):
@@ -59,9 +57,6 @@ class TheDataset():
         self.th = TheThread(self.queue, self.out_queue)
         self.th.setDaemon(True)
         self.th.start()
-        # populate the queue with some initial data
-        for i in xrange(5):
-            self.queue.put(self.image_addresses.next())
     def __iter__(self):
         return self
 
@@ -79,8 +74,6 @@ class TheDataset():
         if self.n_consumed >= self.max_value:
             self.reset()
             raise StopIteration("End of epoch")
-        aug_img = self.out_queue.get()
-        self.n_consumed += 1
         if self.queue.qsize() <= self.min_input_qsize:
             print('emergency filling of the queue')
             for x in xrange(self.input_qsize):
@@ -88,6 +81,8 @@ class TheDataset():
                     self.queue.put(self.image_addresses.next())
                 except StopIteration:
                     pass
+        aug_img = self.out_queue.get()
+        self.n_consumed += 1
         return aug_img
 
 if __name__ == '__main__':
