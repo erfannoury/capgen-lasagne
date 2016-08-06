@@ -9,6 +9,7 @@ import theano.tensor as T
 import lasagne
 import sys
 import cPickle as pickle
+import gc
 from datetime import datetime
 from collections import OrderedDict
 from mscoco_threaded_iter import COCOCaptionDataset
@@ -136,19 +137,12 @@ if __name__ == '__main__':
     recurrent_grads, recurrent_norm = lasagne.updates.total_norm_constraint(recurrent_grads, TOTAL_MAX_NORM, return_norm=True)
     resnet_adam = lasagne.updates.adam(resnet_grads, resnet_params, learning_rate=RESNET_ADAM_LR)
     recurrent_adam = lasagne.updates.adam(recurrent_grads, recurrent_params, learning_rate=RECURR_ADAM_LR)
-    resnet_sgdm = lasagne.updates.nesterov_momentum(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR, momentum=0.8)
-    recurrent_sgdm = lasagne.updates.nesterov_momentum(recurrent_grads, recurrent_params, learning_rate=RECURR_SGDM_LR, momentum=0.9)
     adam_updates = OrderedDict(resnet_adam.items().extend(recurrent_adam.items()))
-    sgdm_updates = OrderedDict(resnet_sgdm.items().extend(recurrent_sgdm.items()))
 
     logger.info('Creating the Adam updating Theano function')
     adam_train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
                                     [total_loss, order_embedding_loss, resnet_norm, recurrent_norm],
                                     updates=adam_updates)
-    logger.info("Creating the SGDM updating Theano function")
-    sgdm_train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
-                                    [total_loss, order_embedding_loss, resnet_norm, recurrent_norm],
-                                    updates=sgdm_updates)
     logger.info("Creating the evaluation Theano function")
     eval_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
                                [deterministic_total_loss, deterministic_order_embedding_loss])
@@ -177,6 +171,22 @@ if __name__ == '__main__':
             logger.info("Training with the Adam update function")
             logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_ADAM_LR.get_value(), RECURR_ADAM_LR.get_value()))
         else:
+            logger.info("Deleting the old Adam update function.")
+            del adam_train_fun
+            del resnet_adam
+            del recurrent_adam
+            del adam_updates
+            logger.info("Calling gc continually to remove Adam's memory.")
+            while gc.collect() > 0:
+                pass
+            logger.info("All memory belonging to adam updates have been removed.")
+            logger.info("Creating the SGDM updating Theano function")
+            resnet_sgdm = lasagne.updates.nesterov_momentum(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR, momentum=0.8)
+            recurrent_sgdm = lasagne.updates.nesterov_momentum(recurrent_grads, recurrent_params, learning_rate=RECURR_SGDM_LR, momentum=0.9)
+            sgdm_updates = OrderedDict(resnet_sgdm.items().extend(recurrent_sgdm.items()))
+            sgdm_train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
+                                            [total_loss, order_embedding_loss, resnet_norm, recurrent_norm],
+                                            updates=sgdm_updates)
             train_fun = sgdm_train_fun
             RESNET_SGDM_LR.set_value(np.float32(RESNET_SGDM_LR.get_value() * EPOCH_LR_COEFF))
             RECURR_SGDM_LR.set_value(np.float32(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF))
