@@ -121,14 +121,17 @@ class COCOCaptionDataset():
         """
         annIds = filter(None, annIds)
         minibatch_size = len(annIds)
-        anns = self.coco.loadAnns(annIds)
+        anns = []
+        for id in annIds:
+            anns.append(self.coco.loadAnns(id)[0])
         im_minibatch = np.zeros((minibatch_size, 3, 224, 224), dtype=np.float32)
         caption_in_minibatch = np.zeros((minibatch_size, self.current_seqlen), dtype=np.int32)
         caption_in_minibatch[:, 0] = self.word2idx['<GO>']
         caption_out_minibatch = np.zeros((minibatch_size, self.current_seqlen), dtype=np.int32)
         for i, ann in enumerate(anns):
             im_file_name = os.path.join(self.images_path, self.coco.loadImgs(ann['image_id'])[0]['file_name'])
-            im = skimage.io.imread(im_file_name).astype(np.float32).transpose((2, 0, 1)) # c01
+            im = skimage.io.imread(im_file_name).astype(np.float32)
+            im = skimage.transform.resize(im, (224, 224, 3), preserve_range=True).transpose((2, 0, 1)) # c01
             im_minibatch[i, ...] = im[::-1, :, :]
             caption = ann['caption']
             tokens = self.tokenizer.tokenize(caption.lower())
@@ -185,10 +188,10 @@ class COCOCaptionDataset():
         return minibatch
 
 if __name__ == '__main__':
-    resnet_weights = pickle.load(open('/home/noury/modelzoo/resnet50.pkl', 'rb'))
+    resnet_weights = pickle.load(open('E:/Code Vault/Github/Recipes/modelzoo/resnet50.pkl', 'rb'))
     mean_im = resnet_weights['mean_image'].reshape((1, 3, 224, 224)).astype(np.float32)
-    images_path = '/home/noury/datasets/mscoco/train2014'
-    annotations_file_path = '/home/noury/datasets/mscoco/annotations/captions_train2014.json'
+    images_path = 'I:/Big Downloads/MS COCO/train2014_2/train2014/'
+    annotations_file_path = 'E:/University Central/Bachelor Thesis/datasets/mscoco/annotations/captions_train2014.json'
     coco_captions = pickle.load(open('coco_captions_trainval2014.pkl', 'rb'))
     train_buckets = coco_captions['train buckets']
     bucket_minibatch_sizes = {16:128, 32:64, 64:32}
