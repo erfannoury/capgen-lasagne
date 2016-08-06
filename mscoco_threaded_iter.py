@@ -142,7 +142,7 @@ class COCOCaptionDataset():
         return (im_minibatch, caption_in_minibatch, caption_out_minibatch)
 
     def _init_queues(self):
-        self.th = TheThread(self.queue, self.out_queue, self.__prep_minibatch__)
+        self.th = COCOThread(self.queue, self.out_queue, self.__prep_minibatch__)
         self.th.setDaemon(True)
         self.th.start()
 
