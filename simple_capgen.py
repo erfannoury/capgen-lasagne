@@ -79,12 +79,12 @@ if __name__ == '__main__':
     cap_in_var = T.imatrix('cap_in')    # batch size, seq len
     mask_var = T.bmatrix('mask_var')    # batch size, seq len
     gate = lasagne.layers.Gate(W_in=lasagne.init.Orthogonal(), W_hid=lasagne.init.Orthogonal(),
-                               W_cell=lasagne.init.HeNormal(), b=lasagne.init.Constant(0.0))
+                               W_cell=lasagne.init.Normal(), b=lasagne.init.Constant(0.0))
     cell_gate = lasagne.layers.Gate(W_in=lasagne.init.Orthogonal(), W_hid=lasagne.init.Orthogonal(),
                                     W_cell=None, b=lasagne.init.Constant(0.0),
                                     nonlinearity=lasagne.nonlinearities.tanh)
     forget_gate = lasagne.layers.Gate(W_in=lasagne.init.Orthogonal(), W_hid=lasagne.init.Orthogonal(),
-                                      W_cell=lasagne.init.HeNormal(), b=lasagne.init.Constant(5.0))
+                                      W_cell=lasagne.init.Normal(), b=lasagne.init.Constant(5.0))
     l_in = lasagne.layers.InputLayer((None, None), cap_in_var, name="l_in")
     l_mask = lasagne.layers.InputLayer((None, None), mask_var, name="l_mask")
     l_hid = lasagne.layers.InputLayer((None, HIDDEN_SIZE), input_var=im_features, name="l_hid")
