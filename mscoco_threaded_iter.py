@@ -203,7 +203,7 @@ if __name__ == '__main__':
     coco = COCOCaptionDataset(images_path, annotations_file_path, train_buckets, bucket_minibatch_sizes, word2idx, mean_im, True)
     i = 0
     for im, capin, capout in coco:
-        print im.shape, capin.shape, capout.shape
+        print(im.shape, capin.shape, capout.shape)
         i += 1
         if i > 5:
             break
