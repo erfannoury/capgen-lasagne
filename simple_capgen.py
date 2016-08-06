@@ -20,6 +20,7 @@ from CustomLSTMLayer import LNLSTMLayer, LSTMLayer
 
 if __name__ == '__main__':
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s %(message)s', '%m/%d/%Y %I:%M:%S %p')
     fh = logging.FileHandler('mscoco_captions.log')
     fh.setLevel(logging.DEBUG)
@@ -67,9 +68,9 @@ if __name__ == '__main__':
 
     logger.info('Creating global variables')
     HIDDEN_SIZE = 2048
-    EMBEDDING_SIZE = 300
+    EMBEDDING_SIZE = 256
     WORD_SIZE = len(idx2word)
-    DENSE_SIZE = 1024
+    DENSE_SIZE = 512
     ORDER_VIOLATION_COEFF = 0.1
     RNN_GRAD_CLIP = 32
     TOTAL_GRAD_CLIP = 64
@@ -99,7 +100,7 @@ if __name__ == '__main__':
     l_mask = lasagne.layers.InputLayer((None, None), mask_var, name="l_mask")
     l_hid = lasagne.layers.InputLayer((None, HIDDEN_SIZE), input_var=im_features, name="l_hid")
     l_emb = lasagne.layers.EmbeddingLayer(l_in, input_size=WORD_SIZE, output_size=EMBEDDING_SIZE, name="l_emb")
-    l_lstm = LNLSTMLayer(l_emb, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
+    l_lstm = LSTMLayer(l_emb, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
                                     outgate=gate, hid_init=l_hid, peepholes=True, grad_clipping=RNN_GRAD_CLIP,
                                     mask_input=l_mask, name="l_lstm") # batch size, seq len, hidden size
     l_reshape = lasagne.layers.ReshapeLayer(l_lstm, (-1, [2]), name="l_reshape") # batch size * seq len, hidden size
