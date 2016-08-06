@@ -199,7 +199,7 @@ if __name__ == '__main__':
         logger.info("Saving model parameters for epoch {}".format(e))
         pickle.dump({'resnet':lasagne.layers.get_all_param_values(resnet['pool5']),
                      'recurrent':lasagne.layers.get_all_param_values(l_out)},
-                      open('param_values_{}.pkl'.format{e}, 'wb'), protocol=-1)
+                      open('param_values_{}.pkl'.format(e), 'wb'), protocol=-1)
         logger.info("Saving loss values for epoch {}".format(e))
         pickle.dump({'total loss':total_loss_values, 'oe loss': order_embedding_loss_values,
                      'resnet norm': resnet_norm_values, 'recurrent norm': recurrent_norm_values},
