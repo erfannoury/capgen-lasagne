@@ -13,6 +13,14 @@ import time
 from time import sleep
 
 def data_augmentation(img_addr):
+    """
+    This is the time-consuming function that may contain
+    IO operations, and will be processed in the CPU.
+    This is the function that can be parallelized the GPU
+    operations. While the GPU processes the current batch of
+    data, this function in a separate thread will prepare the
+    next batch.
+    """
     sleep(1 + np.random.random())
     print("The request for image {} is served.".format(img_addr))
     return 'augmented image {}'.format(img_addr)
@@ -41,6 +49,13 @@ class TheThread(threading.Thread):
                 pass
 
 class TheDataset():
+    """
+    The main iterator for the dataset.
+    Each item of the iterator is a batch that is 
+    ready to be uploaded to GPU. It also has a 
+    separate thread to prepare the next batch
+    concurrently on CPU.
+    """
     def __init__(self, mb_size):
         self.mb_size = mb_size
         self.buffer_size = 5
