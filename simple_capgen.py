@@ -17,11 +17,21 @@ sys.path.append('/home/noury/codevault/seq2seq-lasagne/')
 from resnet50 import build_model
 from CustomLSTMLayer import LNLSTMLayer, LSTMLayer
 
-logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',
-                    filename='mscoco_caption.log',level=logging.DEBUG)
 
 if __name__ == '__main__':
     logger = logging.getLogger(__name__)
+    formatter = logging.Formatter('%(asctime)s %(message)s', '%m/%d/%Y %I:%M:%S %p')
+    fh = logging.FileHandler('mscoco_captions.log')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.INFO)
+    sh.setFormatter(formatter)
+
+    logger.addHandler(fh)
+    logger.addHandler(sh)
+
     logger.info('Loading the ResNet50 model.')
     # First get the ResNet50 model
     resnet_weights_path = '/home/noury/modelzoo/resnet50.pkl'
