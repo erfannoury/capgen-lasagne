@@ -130,10 +130,14 @@ class COCOCaptionDataset():
         caption_out_minibatch = np.zeros((minibatch_size, self.current_seqlen), dtype=np.int32)
         for i, ann in enumerate(anns):
             im_file_name = os.path.join(self.images_path, self.coco.loadImgs(ann['image_id'])[0]['file_name'])
-            im = skimage.io.imread(im_file_name).astype(np.float32)
-            if im.ndim == 2:
-                im = np.tile(im[:, :, np.newaxis], (1, 1, 3))
-            im = skimage.transform.resize(im, (224, 224), preserve_range=True).transpose((2, 0, 1)) # c01
+            try:
+                im = skimage.io.imread(im_file_name).astype(np.float32)
+                if im.ndim == 2:
+                    im = np.tile(im[:, :, np.newaxis], (1, 1, 3))
+                im = skimage.transform.resize(im, (224, 224), preserve_range=True).transpose((2, 0, 1)) # c01
+            except ValueError:
+                im = np.zeros((3, 224, 224), dtype=np.float32)
+                print("Error in reading image {}".format(im_file_name))
             im_minibatch[i, ...] = im[::-1, :, :]
             caption = ann['caption']
             tokens = self.tokenizer.tokenize(caption.lower())
