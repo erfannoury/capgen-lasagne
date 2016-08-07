@@ -131,6 +131,8 @@ class COCOCaptionDataset():
         for i, ann in enumerate(anns):
             im_file_name = os.path.join(self.images_path, self.coco.loadImgs(ann['image_id'])[0]['file_name'])
             im = skimage.io.imread(im_file_name).astype(np.float32)
+            if im.ndim == 2:
+                im = np.tile(im[:, :, np.newaxis], (1, 1, 3))
             im = skimage.transform.resize(im, (224, 224, 3), preserve_range=True).transpose((2, 0, 1)) # c01
             im_minibatch[i, ...] = im[::-1, :, :]
             caption = ann['caption']
