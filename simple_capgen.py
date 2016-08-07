@@ -71,10 +71,13 @@ if __name__ == '__main__':
     RNN_GRAD_CLIP = 32
     TOTAL_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
+    RESNET_ADAM_LR = theano.shared(np.float32(0.005 * 2), 'resnet adam lr')
+    RECURR_ADAM_LR = theano.shared(np.float32(0.05 * 2), 'recurrent adam lr')
     RESNET_SGDM_LR = theano.shared(np.float32(0.0005 * 2), 'resnet sgdm lr')
     RECURR_SGDM_LR = theano.shared(np.float32(0.005 * 2), 'recurrent sgdm lr')
     EPOCH_LR_COEFF = np.float32(0.5)
     NUM_EPOCHS = 20
+    ADAM_EPOCHS = 5
 
     logger.info('Building the network.')
     im_features = lasagne.layers.get_output(resnet['pool5'])
@@ -127,17 +130,29 @@ if __name__ == '__main__':
     recurrent_grads = [T.clip(g, -TOTAL_GRAD_CLIP, TOTAL_GRAD_CLIP) for g in recurrent_grads]
     resnet_grads, resnet_norm = lasagne.updates.total_norm_constraint(resnet_grads, TOTAL_MAX_NORM, return_norm=True)
     recurrent_grads, recurrent_norm = lasagne.updates.total_norm_constraint(recurrent_grads, TOTAL_MAX_NORM, return_norm=True)
-    resnet_sgdm = lasagne.updates.sgd(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR)
+    resnet_adam = lasagne.updates.adam(resnet_grads, resnet_params, learning_rate=RESNET_ADAM_LR)
+    recurrent_adam = lasagne.updates.adam(recurrent_grads, recurrent_params, learning_rate=RECURR_ADAM_LR)
+    resnet_adam_items = resnet_adam.items()
+    recurrent_adam_items = recurrent_adam.items()
+    resnet_adam_items.extend(recurrent_adam_items)
+    adam_updates = OrderedDict(resnet_adam_items)
+
+    logger.info("Creating the Adam update Theano function")
+    adam_train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
+                                     [total_loss, order_embedding_loss, resnet_norm, recurrent_norm],
+                                     updates=adam_updates)
+
+    resnet_sgdm = lasagne.updates.nesterov_momentum(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR, momentum=0.8)
     recurrent_sgdm = lasagne.updates.nesterov_momentum(recurrent_grads, recurrent_params, learning_rate=RECURR_SGDM_LR, momentum=0.9)
     resnet_sgdm_items = resnet_sgdm.items()
     recurrent_sgdm_items = recurrent_sgdm.items()
     resnet_sgdm_items.extend(recurrent_sgdm_items)
     sgdm_updates = OrderedDict(resnet_sgdm_items)
-    
+
     logger.info("Creating the SGDM update Theano function")
     sgdm_train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
-                                    [total_loss, order_embedding_loss, resnet_norm, recurrent_norm],
-                                    updates=sgdm_updates)
+                                     [total_loss, order_embedding_loss, resnet_norm, recurrent_norm],
+                                     updates=sgdm_updates)
     logger.info("Creating the evaluation Theano function")
     eval_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
                                [deterministic_total_loss, deterministic_order_embedding_loss])
@@ -148,6 +163,7 @@ if __name__ == '__main__':
     coco_valid = COCOCaptionDataset(valid_images_path, valid_annotations_filepath, valid_buckets,
                                     bucket_minibatch_sizes, word2idx, mean_im, False)
 
+    deleted_adam_resources = False
     total_loss_values = {}
     order_embedding_loss_values = {}
     resnet_norm_values = {}
@@ -165,13 +181,31 @@ if __name__ == '__main__':
         det_total_loss_values[e] = []
         det_total_loss_values[e] = []
 
-        RESNET_SGDM_LR.set_value(np.float32(RESNET_SGDM_LR.get_value() * EPOCH_LR_COEFF))
-        RECURR_SGDM_LR.set_value(np.float32(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF))
-        logger.info("Training with the SGDM update function")
-        logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_SGDM_LR.get_value(), RECURR_SGDM_LR.get_value()))
+        if e <= ADAM_EPOCHS:
+            train_fun = adam_train_fun
+            RESNET_ADAM_LR.set_value(np.float32(RESNET_ADAM_LR.get_value() * EPOCH_LR_COEFF))
+            RECURR_ADAM_LR.set_value(np.float32(RECURR_ADAM_LR.get_value() * EPOCH_LR_COEFF))
+            logger.info("Training with the Adam update function")
+            logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_ADAM_LR.get_value(), RECURR_ADAM_LR.get_value()))
+        else:
+            if not deleted_adam_resources:
+                deleted_adam_resources = True
+                logger.info("Deleting Adam training function resources")
+                del resnet_adam_items
+                del adam_updates
+                del adam_train_fun
+                logger.info("Calling gc.collect() to remove resource from GC")
+                while gc.collect() > 0:
+                    pass
+            train_fun = sgdm_train_fun
+            RESNET_SGDM_LR.set_value(np.float32(RESNET_SGDM_LR.get_value() * EPOCH_LR_COEFF))
+            RECURR_SGDM_LR.set_value(np.float32(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF))
+            logger.info("Training with the SGDM update function")
+            logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_SGDM_LR.get_value(), RECURR_SGDM_LR.get_value()))
+
         now = datetime.now()
         for im, cap_in, cap_out in coco_train:
-            tl, oe, resn, recn = sgdm_train_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
+            tl, oe, resn, recn = train_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
             logger.debug("Total Loss: {}, Order-embedding loss: {}, ResNet norm: {}, Recurrent norm: {}".format(tl, oe, resn, recn))
             total_loss_values[e].append(tl)
             order_embedding_loss_values[e].append(oe)
