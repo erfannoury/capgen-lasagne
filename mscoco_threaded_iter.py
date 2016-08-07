@@ -40,9 +40,9 @@ class COCOThread(threading.Thread):
 
     def run(self):
         while True:
-            annIds = self.queue.get()
+            annIds, seqlen = self.queue.get()
             try:
-                minibatch = self.prep_func(annIds)
+                minibatch = self.prep_func(annIds, seqlen)
                 self.out_queue.put(minibatch)
                 self.queue.task_done()
             except IOError:
@@ -103,12 +103,14 @@ class COCOCaptionDataset():
         self.coco = COCO(self.annotations_path)
         self.reset()
 
-    def __prep_minibatch__(self, annIds):
+    def __prep_minibatch__(self, annIds, seqlen):
         """
         Parameters
         ----------
         annIds: list
             list of integers representing the annotation ids
+        seqlen: int
+            maximum length of sequence for this minibatch
 
         Returns
         -------
@@ -125,9 +127,9 @@ class COCOCaptionDataset():
         for id in annIds:
             anns.append(self.coco.loadAnns(id)[0])
         im_minibatch = np.zeros((minibatch_size, 3, 224, 224), dtype=np.float32)
-        caption_in_minibatch = np.zeros((minibatch_size, self.current_seqlen), dtype=np.int32)
+        caption_in_minibatch = np.zeros((minibatch_size, seqlen), dtype=np.int32)
         caption_in_minibatch[:, 0] = self.word2idx['<GO>']
-        caption_out_minibatch = np.zeros((minibatch_size, self.current_seqlen), dtype=np.int32)
+        caption_out_minibatch = np.zeros((minibatch_size, seqlen), dtype=np.int32)
         for i, ann in enumerate(anns):
             im_file_name = os.path.join(self.images_path, self.coco.loadImgs(ann['image_id'])[0]['file_name'])
             try:
@@ -186,7 +188,7 @@ class COCOCaptionDataset():
         if self.queue.qsize() <= self.min_input_qsize:
             for _ in xrange(self.input_qsize):
                 try:
-                    self.queue.put(self.current_bucket.next())
+                    self.queue.put((self.current_bucket.next(), self.current_seqlen))
                 except StopIteration:
                     pass
         minibatch = self.out_queue.get()
