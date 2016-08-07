@@ -89,6 +89,7 @@ class COCOCaptionDataset():
         self.buffer_size = 5
         self.input_qsize = 16
         self.min_input_qsize = 10
+        self.total_max = 0
         self.mean_im = mean_im
         self.tokenizer = TreebankWordTokenizer()
         self.annotations_path = annotations_path
@@ -100,6 +101,8 @@ class COCOCaptionDataset():
         self._init_queues()
 
     def _initialize(self):
+        for sl in buckets.keys():
+            self.total_max += int(np.ceil(len(buckets[sl]) / bucket_minibatch_sizes[sl]))
         self.coco = COCO(self.annotations_path)
         self.reset()
 
@@ -179,7 +182,7 @@ class COCOCaptionDataset():
             self.reset()
         if self.shuffle:
             np.random.shuffle(self.buckets[self.current_seqlen])
-        self.max_size += int(np.ceil(len(self.buckets[self.current_seqlen]) // self.bucket_minibatch_sizes[self.current_seqlen]))
+        self.max_size += int(np.ceil(len(self.buckets[self.current_seqlen]) / self.bucket_minibatch_sizes[self.current_seqlen]))
         self.current_bucket = grouper(self.buckets[self.current_seqlen], self.bucket_minibatch_sizes[self.current_seqlen])
 
     def _step(self):
