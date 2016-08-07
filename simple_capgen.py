@@ -79,7 +79,7 @@ if __name__ == '__main__':
     logger.info('Building the network.')
     im_features = lasagne.layers.get_output(resnet['pool5'])
     im_features = T.flatten(im_features, outdim=2) # batch size, number of features
-    cap_out_var = T.imatrix('cap_out') # batch size, seq len
+    cap_out_var = T.imatrix('cap_out')  # batch size, seq len
     cap_in_var = T.imatrix('cap_in')    # batch size, seq len
     mask_var = T.bmatrix('mask_var')    # batch size, seq len
     gate = lasagne.layers.Gate(W_in=lasagne.init.Orthogonal(), W_hid=lasagne.init.Orthogonal(),
@@ -106,15 +106,15 @@ if __name__ == '__main__':
 
     logger.info('Creating output and loss variables')
     prediction = lasagne.layers.get_output(l_out, deterministic=False)
-    cap_out_var = cap_out_var.flatten(outdim=1)
-    loss = T.sum(lasagne.objectives.categorical_crossentropy(prediction, cap_out_var))
+    flat_cap_out_var = T.flatten(cap_out_var, outdim=1)
+    loss = T.sum(lasagne.objectives.categorical_crossentropy(prediction, flat_cap_out_var))
     caption_features = lasagne.layers.get_output(l_slice, deterministic=False)
     order_embedding_loss = T.pow(T.maximum(0, caption_features - im_features), 2).sum()
     total_loss = loss + ORDER_VIOLATION_COEFF * order_embedding_loss
 
     deterministic_prediction = lasagne.layers.get_output(l_out, deterministic=True)
     deterministic_captions = lasagne.layers.get_output(l_slice, deterministic=True)
-    deterministic_loss = T.sum(lasagne.objectives.categorical_crossentropy(deterministic_prediction, cap_out_var))
+    deterministic_loss = T.sum(lasagne.objectives.categorical_crossentropy(deterministic_prediction, flat_cap_out_var))
     deterministic_order_embedding_loss = T.pow(T.maximum(0, deterministic_captions - im_features), 2).sum()
     deterministic_total_loss = deterministic_loss + ORDER_VIOLATION_COEFF * deterministic_order_embedding_loss
 
