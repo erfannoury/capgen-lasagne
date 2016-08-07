@@ -177,7 +177,7 @@ class COCOCaptionDataset():
             self.reset()
         if self.shuffle:
             np.random.shuffle(self.buckets[self.current_seqlen])
-        self.max_size += len(self.buckets[self.current_seqlen]) // self.bucket_minibatch_sizes[self.current_seqlen] + 1
+        self.max_size += int(np.ceil(len(self.buckets[self.current_seqlen]) // self.bucket_minibatch_sizes[self.current_seqlen]))
         self.current_bucket = grouper(self.buckets[self.current_seqlen], self.bucket_minibatch_sizes[self.current_seqlen])
 
     def _step(self):
