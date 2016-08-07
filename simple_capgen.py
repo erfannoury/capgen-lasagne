@@ -59,7 +59,7 @@ if __name__ == '__main__':
         word2idx[w] = i+3
     idx2word = map(lambda x: x[0], sorted(word2idx.items(), key=lambda x: x[1]))
 
-    bucket_minibatch_sizes = {16:128, 32:64, 64:32}
+    bucket_minibatch_sizes = {16:64, 32:32, 64:16}
 
 
     logger.info('Creating global variables')
@@ -129,7 +129,10 @@ if __name__ == '__main__':
     recurrent_grads, recurrent_norm = lasagne.updates.total_norm_constraint(recurrent_grads, TOTAL_MAX_NORM, return_norm=True)
     resnet_sgdm = lasagne.updates.sgd(resnet_grads, resnet_params, learning_rate=RESNET_SGDM_LR)
     recurrent_sgdm = lasagne.updates.nesterov_momentum(recurrent_grads, recurrent_params, learning_rate=RECURR_SGDM_LR, momentum=0.9)
-    sgdm_updates = OrderedDict(resnet_sgdm.items().extend(recurrent_sgdm.items()))
+    resnet_sgdm_items = resnet_sgdm.items()
+    recurrent_sgdm_items = recurrent_sgdm.items()
+    resnet_sgdm_items.extend(recurrent_sgdm_items)
+    sgdm_updates = OrderedDict(resnet_sgdm_items)
     
     logger.info("Creating the SGDM update Theano function")
     sgdm_train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
