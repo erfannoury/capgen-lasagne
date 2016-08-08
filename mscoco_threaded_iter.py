@@ -102,7 +102,7 @@ class COCOCaptionDataset():
 
     def _initialize(self):
         for sl in buckets.keys():
-            self.total_max += int(np.ceil(len(buckets[sl]) / bucket_minibatch_sizes[sl]))
+            self.total_max += int(np.ceil(len(self.buckets[sl]) / self.bucket_minibatch_sizes[sl]))
         self.coco = COCO(self.annotations_path)
         self.reset()
 
