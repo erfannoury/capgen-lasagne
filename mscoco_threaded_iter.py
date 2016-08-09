@@ -186,6 +186,9 @@ class COCOCaptionDataset():
         self.current_bucket = grouper(self.buckets[self.current_seqlen], self.bucket_minibatch_sizes[self.current_seqlen])
 
     def _step(self):
+        if self.n_consumed >= self.total_max:
+            self.reset()
+            raise StopIteration("End of epoch")
         if self.n_consumed >= self.max_size:
             self.proceed_bucket()
         if self.queue.qsize() <= self.min_input_qsize:
@@ -199,13 +202,13 @@ class COCOCaptionDataset():
         return minibatch
 
 if __name__ == '__main__':
-    resnet_weights = pickle.load(open('E:/Code Vault/Github/Recipes/modelzoo/resnet50.pkl', 'rb'))
+    resnet_weights = pickle.load(open('/home/noury/modelzoo/resnet50.pkl', 'rb'))
     mean_im = resnet_weights['mean_image'].reshape((1, 3, 224, 224)).astype(np.float32)
-    images_path = 'I:/Big Downloads/MS COCO/train2014_2/train2014/'
-    annotations_file_path = 'E:/University Central/Bachelor Thesis/datasets/mscoco/annotations/captions_train2014.json'
+    images_path = '/home/noury/datasets/mscoco/train2014/'
+    annotations_file_path = '/home/noury/datasets/mscoco/annotations/captions_train2014.json'
     coco_captions = pickle.load(open('coco_captions_trainval2014.pkl', 'rb'))
     train_buckets = coco_captions['train buckets']
-    bucket_minibatch_sizes = {16:128, 32:64, 64:32}
+    bucket_minibatch_sizes = {16:64, 32:32, 64:16}
     wordset = coco_captions['raw wordset']
     word2idx = {}
     word2idx['<PAD>'] = 0
@@ -214,9 +217,9 @@ if __name__ == '__main__':
     for i, w in enumerate(wordset):
         word2idx[w] = i+3
     coco = COCOCaptionDataset(images_path, annotations_file_path, train_buckets, bucket_minibatch_sizes, word2idx, mean_im, True)
-    i = 0
-    for im, capin, capout in coco:
-        print(im.shape, capin.shape, capout.shape)
-        i += 1
-        if i > 5:
-            break
+    for e in xrange(2):
+        print("Starting epoch", e+1)
+        i = 0
+        for im, capin, capout in coco:
+            i += 1
+            print(i, '\t', im.shape, capin.shape, capout.shape)
