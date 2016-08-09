@@ -66,8 +66,8 @@ if __name__ == '__main__':
     HIDDEN_SIZE = 2048
     EMBEDDING_SIZE = 256
     WORD_SIZE = len(idx2word)
-    DENSE_SIZE = 512
-    ORDER_VIOLATION_COEFF = 0.1
+    DENSE_SIZE = 1024
+    ORDER_VIOLATION_COEFF = 0.2
     RNN_GRAD_CLIP = 32
     TOTAL_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
@@ -202,15 +202,16 @@ if __name__ == '__main__':
             RECURR_SGDM_LR.set_value(np.float32(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF))
             logger.info("Training with the SGDM update function")
             logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_SGDM_LR.get_value(), RECURR_SGDM_LR.get_value()))
-
+        mb = 0
         now = datetime.now()
         for im, cap_in, cap_out in coco_train:
             tl, oe, resn, recn = train_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
-            logger.debug("Total Loss: {}, Order-embedding loss: {}, ResNet norm: {}, Recurrent norm: {}".format(tl, oe, resn, recn))
+            logger.debug("Epoch: {}, Minibatch: {}, Total Loss: {}, Order-embedding loss: {}, ResNet norm: {}, Recurrent norm: {}".format(e, mb, tl, oe, resn, recn))
             total_loss_values[e].append(tl)
             order_embedding_loss_values[e].append(oe)
             resnet_norm_values[e].append(resn)
             recurrent_norm_values[e].append(recn)
+            mb += 1
         logger.info("Training epoch {} took {}.".format(e, datetime.now() - now))
         logger.info("Epoch {} results".format(e))
         logger.info("Mean total loss: {}".format(np.mean(total_loss_values[e])))
@@ -222,7 +223,7 @@ if __name__ == '__main__':
             logger.info("Evaluating the model on the validation set.")
             for im, cap_in, cap_out in coco_valid:
                 tl, oe = eval_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
-                logger.debug("Validation total loss: {}, Validation order-embedding loss: {}".format(tl, oe))
+                logger.debug("Epoch: {}, Validation total loss: {}, Validation order-embedding loss: {}".format(e, tl, oe))
                 det_total_loss_values[e].append(tl)
                 det_order_embedding_loss_values[e].append(oe)
             logger.info("Epoch {} validation results".format(e))
