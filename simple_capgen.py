@@ -16,7 +16,6 @@ from mscoco_threaded_iter import COCOCaptionDataset
 sys.path.append('/home/noury/codevault/Recipes/modelzoo/')
 sys.path.append('/home/noury/codevault/seq2seq-lasagne/')
 from resnet50 import build_model
-from CustomLSTMLayer import LNLSTMLayer, LSTMLayer
 
 
 if __name__ == '__main__':
