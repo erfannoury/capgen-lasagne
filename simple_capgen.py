@@ -95,9 +95,7 @@ if __name__ == '__main__':
             for _ in xrange(max_epoch):
                 RESNET_ADAM_LR.set_value(RESNET_ADAM_LR.get_value() * EPOCH_LR_COEFF)
                 RECURR_ADAM_LR.set_value(RECURR_ADAM_LR.get_value() * EPOCH_LR_COEFF)
-        NUM_EPOCHS -= max_epoch
         param_values_file = 'param_values_{}.pkl'.format(max_epoch)
-        param_values = pickle.load(open(param_values_file, 'rb'))
 
     logger.info('Building the network.')
     im_features = lasagne.layers.get_output(resnet['pool5'])
@@ -129,6 +127,7 @@ if __name__ == '__main__':
 
     if CONTINUE:
         logger.info('Setting model weights from epoch {}'.format(max_epoch))
+        param_values = pickle.load(open(param_values_file, 'rb'))
         lasagne.layers.set_all_param_values(l_out, param_values['recurrent'])
         lasagne.layers.set_all_param_values(resnet['pool5'], param_values['resnet'])
 
@@ -195,6 +194,7 @@ if __name__ == '__main__':
     recurrent_norm_values = {}
     det_total_loss_values = {}
     det_order_embedding_loss_values = {}
+
     logger.info("Starting the training process...")
     START = 1
     if CONTINUE:
@@ -269,6 +269,6 @@ if __name__ == '__main__':
             logger.info("Mean validation total loss: {}".format(np.mean(det_total_loss_values[e])))
             logger.info("Mean validation order-embedding loss: {}".format(np.mean(det_order_embedding_loss_values[e])))
 
-        logger.info("Saving validation loss values for epoch {}".format(e))
-        pickle.dump({'total loss': det_total_loss_values, 'oe loss': det_order_embedding_loss_values},
-                    open('validation_losses.pkl', 'wb'), protocol=-1)
+            logger.info("Saving validation loss values for epoch {}".format(e))
+            pickle.dump({'total loss': det_total_loss_values, 'oe loss': det_order_embedding_loss_values},
+                        open('validation_losses.pkl', 'wb'), protocol=-1)
