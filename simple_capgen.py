@@ -63,6 +63,7 @@ if __name__ == '__main__':
 
 
     logger.info('Creating global variables')
+    CONTINUE = True
     HIDDEN_SIZE = 2048
     EMBEDDING_SIZE = 256
     WORD_SIZE = len(idx2word)
@@ -78,6 +79,25 @@ if __name__ == '__main__':
     EPOCH_LR_COEFF = np.float32(0.5)
     NUM_EPOCHS = 20
     ADAM_EPOCHS = 5
+
+    if CONTINUE:
+        import glob
+        param_values = glob.glob('param_values_*.pkl')
+        max_epoch = max(map(lambda x: int(x[len('param_values_'):-len('.pkl')]), param_values))
+        logger.info('Continue training from epoch {}'.format(max_epoch + 1))
+        logger.info('Setting previous parameter values from epoch {}'.format(max_epoch))
+        if max_epoch >= ADAM_EPOCHS:
+            for _ in xrange(max_epoch - ADAM_EPOCHS):
+                RESNET_SGDM_LR.set_value(RESNET_SGDM_LR.get_value() * EPOCH_LR_COEFF)
+                RECURR_SGDM_LR.set_value(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF)
+            ADAM_EPOCHS = 0
+        else:
+            for _ in xrange(max_epoch):
+                RESNET_ADAM_LR.set_value(RESNET_ADAM_LR.get_value() * EPOCH_LR_COEFF)
+                RECURR_ADAM_LR.set_value(RECURR_ADAM_LR.get_value() * EPOCH_LR_COEFF)
+        NUM_EPOCHS -= max_epoch
+        param_values_file = 'param_values_{}.pkl'.format(max_epoch)
+        param_values = pickle.load(open(param_values_file, 'rb'))
 
     logger.info('Building the network.')
     im_features = lasagne.layers.get_output(resnet['pool5'])
@@ -106,6 +126,11 @@ if __name__ == '__main__':
     l_out = lasagne.layers.DenseLayer(l_drp, WORD_SIZE, nonlinearity=lasagne.nonlinearities.softmax,
                                        name='l_out') # batch size * seq len, WORD SIZE
     l_slice = lasagne.layers.SliceLayer(l_lstm, -1, axis=1, name="l_slice")
+
+    if CONTINUE:
+        logger.info('Setting model weights from epoch {}'.format(max_epoch))
+        lasagne.layers.set_all_param_values(l_out, param_values['recurrent'])
+        lasagne.layers.set_all_param_values(resnet['pool5'], param_values['resnet'])
 
     logger.info('Creating output and loss variables')
     prediction = lasagne.layers.get_output(l_out, deterministic=False)
@@ -171,7 +196,10 @@ if __name__ == '__main__':
     det_total_loss_values = {}
     det_order_embedding_loss_values = {}
     logger.info("Starting the training process...")
-    for e in xrange(1, NUM_EPOCHS + 1):
+    START = 1
+    if CONTINUE:
+        START = max_epoch + 1
+    for e in xrange(START, NUM_EPOCHS + 1):
         logger.info("Starting epoch".format(e))
 
         total_loss_values[e] = []
@@ -179,7 +207,7 @@ if __name__ == '__main__':
         resnet_norm_values[e] = []
         recurrent_norm_values[e] = []
         det_total_loss_values[e] = []
-        det_total_loss_values[e] = []
+        det_order_embedding_loss_values[e] = []
 
         if e <= ADAM_EPOCHS:
             train_fun = adam_train_fun
@@ -219,16 +247,6 @@ if __name__ == '__main__':
         logger.info("Mean ResNet norm: {}".format(np.mean(resnet_norm_values[e])))
         logger.info("Mean Recurrent norm: {}".format(np.mean(recurrent_norm_values[e])))
 
-        if e % 2 == 0:
-            logger.info("Evaluating the model on the validation set.")
-            for im, cap_in, cap_out in coco_valid:
-                tl, oe = eval_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
-                logger.debug("Epoch: {}, Validation total loss: {}, Validation order-embedding loss: {}".format(e, tl, oe))
-                det_total_loss_values[e].append(tl)
-                det_order_embedding_loss_values[e].append(oe)
-            logger.info("Epoch {} validation results".format(e))
-            logger.info("Mean validation total loss: {}".format(np.mean(det_total_loss_values[e])))
-            logger.info("Mean validation order-embedding loss: {}".format(np.mean(det_order_embedding_loss_values[e])))
         logger.info("Saving model parameters for epoch {}".format(e))
         pickle.dump({'resnet':lasagne.layers.get_all_param_values(resnet['pool5']),
                      'recurrent':lasagne.layers.get_all_param_values(l_out)},
@@ -237,6 +255,20 @@ if __name__ == '__main__':
         pickle.dump({'total loss':total_loss_values, 'oe loss': order_embedding_loss_values,
                      'resnet norm': resnet_norm_values, 'recurrent norm': recurrent_norm_values},
                      open('training_losses.pkl', 'wb'), protocol=-1)
+
+        if e % 2 == 0:
+            mb = 0
+            logger.info("Evaluating the model on the validation set.")
+            for im, cap_in, cap_out in coco_valid:
+                tl, oe = eval_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
+                logger.debug("Epoch: {}, Minibatch: {}, Validation total loss: {}, Validation order-embedding loss: {}".format(e, mb, tl, oe))
+                det_total_loss_values[e].append(tl)
+                det_order_embedding_loss_values[e].append(oe)
+                mb += 1
+            logger.info("Epoch {} validation results".format(e))
+            logger.info("Mean validation total loss: {}".format(np.mean(det_total_loss_values[e])))
+            logger.info("Mean validation order-embedding loss: {}".format(np.mean(det_order_embedding_loss_values[e])))
+
         logger.info("Saving validation loss values for epoch {}".format(e))
         pickle.dump({'total loss': det_total_loss_values, 'oe loss': det_order_embedding_loss_values},
                     open('validation_losses.pkl', 'wb'), protocol=-1)
