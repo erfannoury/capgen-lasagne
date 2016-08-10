@@ -72,10 +72,10 @@ if __name__ == '__main__':
     RNN_GRAD_CLIP = 32
     TOTAL_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
-    RESNET_ADAM_LR = theano.shared(np.float32(0.005 * 2), 'resnet adam lr')
-    RECURR_ADAM_LR = theano.shared(np.float32(0.05 * 2), 'recurrent adam lr')
-    RESNET_SGDM_LR = theano.shared(np.float32(0.0005 * 2), 'resnet sgdm lr')
-    RECURR_SGDM_LR = theano.shared(np.float32(0.005 * 2), 'recurrent sgdm lr')
+    RESNET_ADAM_LR = theano.shared(np.float32(0.0004 * 2), 'resnet adam lr')
+    RECURR_ADAM_LR = theano.shared(np.float32(0.004 * 2), 'recurrent adam lr')
+    RESNET_SGDM_LR = theano.shared(np.float32(0.0001 * 2), 'resnet sgdm lr')
+    RECURR_SGDM_LR = theano.shared(np.float32(0.001 * 2), 'recurrent sgdm lr')
     EPOCH_LR_COEFF = np.float32(0.5)
     NUM_EPOCHS = 15
     ADAM_EPOCHS = 3
