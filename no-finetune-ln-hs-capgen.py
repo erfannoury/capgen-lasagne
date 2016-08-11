@@ -182,11 +182,10 @@ if __name__ == '__main__':
         mb = 0
         now = datetime.now()
         for im, cap_in, cap_out in coco_train:
-            tl, oe, resn, recn = train_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
-            logger.debug("Epoch: {}, Minibatch: {}, Total Loss: {}, Order-embedding loss: {}, ResNet norm: {}, Recurrent norm: {}".format(e, mb, tl, oe, resn, recn))
+            tl, oe, recn = train_fun(im, cap_in, (cap_in > 0).astype(np.int8), cap_out)
+            logger.debug("Epoch: {}, Minibatch: {}, Total Loss: {}, Order-embedding loss: {}, Recurrent norm: {}".format(e, mb, tl, oe, recn))
             total_loss_values[e].append(tl)
             order_embedding_loss_values[e].append(oe)
-            resnet_norm_values[e].append(resn)
             recurrent_norm_values[e].append(recn)
             mb += 1
 
