@@ -72,10 +72,10 @@ if __name__ == '__main__':
     RNN_GRAD_CLIP = 32
     TOTAL_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
-    RESNET_ADAM_LR = theano.shared(np.float32(0.00001 * 2), 'resnet adam lr')
-    RECURR_ADAM_LR = theano.shared(np.float32(0.0001 * 2), 'recurrent adam lr')
-    RESNET_SGDM_LR = theano.shared(np.float32(0.0001 * 2), 'resnet sgdm lr')
-    RECURR_SGDM_LR = theano.shared(np.float32(0.001 * 2), 'recurrent sgdm lr')
+    RESNET_ADAM_LR = theano.shared(np.float32(0.0001), 'resnet adam lr')
+    RECURR_ADAM_LR = theano.shared(np.float32(0.001), 'recurrent adam lr')
+    RESNET_SGDM_LR = theano.shared(np.float32(0.0001), 'resnet sgdm lr')
+    RECURR_SGDM_LR = theano.shared(np.float32(0.001), 'recurrent sgdm lr')
     EPOCH_LR_COEFF = np.float32(0.5)
     NUM_EPOCHS = 15
     ADAM_EPOCHS = 3
@@ -117,7 +117,9 @@ if __name__ == '__main__':
     l_emb = lasagne.layers.EmbeddingLayer(l_in, input_size=WORD_SIZE, output_size=EMBEDDING_SIZE, name="l_emb")
     l_lstm = LNLSTMLayer(l_emb, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
                                     outgate=gate, hid_init=l_hid, peepholes=True, grad_clipping=RNN_GRAD_CLIP,
-                                    mask_input=l_mask, precompute_input=False, name="l_lstm") # batch size, seq len, hidden size
+                                    mask_input=l_mask, precompute_input=False,
+                                    alpha_init=lasagne.init.Constant(0.2), # as suggested by Ryan Kiros on Twitter
+                                    normalize_cell=True, name="l_lstm") # batch size, seq len, hidden size
     l_reshape = lasagne.layers.ReshapeLayer(l_lstm, (-1, [2]), name="l_reshape") # batch size * seq len, hidden size
     l_fc = lasagne.layers.DenseLayer(l_reshape, DENSE_SIZE, b=lasagne.init.Constant(5.0),
                                     nonlinearity=lasagne.nonlinearities.rectify, name="l_fc")
@@ -134,14 +136,15 @@ if __name__ == '__main__':
     logger.info('Creating output and loss variables')
     prediction = lasagne.layers.get_output(l_hs, deterministic=False)
     flat_cap_out_var = T.flatten(cap_out_var, outdim=1)
-    loss = T.sum(lasagne.objectives.categorical_crossentropy(prediction, flat_cap_out_var))
+    flat_mask_var = T.flatten(cap_out_var, outdim=1)
+    loss = T.sum(lasagne.objectives.categorical_crossentropy(prediction, flat_cap_out_var)[flat_mask_var.nonzero()])
     caption_features = lasagne.layers.get_output(l_slice, deterministic=False)
     order_embedding_loss = T.pow(T.maximum(0, caption_features - im_features), 2).sum()
     total_loss = loss + ORDER_VIOLATION_COEFF * order_embedding_loss
 
     deterministic_prediction = lasagne.layers.get_output(l_hs, deterministic=True)
     deterministic_captions = lasagne.layers.get_output(l_slice, deterministic=True)
-    deterministic_loss = T.sum(lasagne.objectives.categorical_crossentropy(deterministic_prediction, flat_cap_out_var))
+    deterministic_loss = T.sum(lasagne.objectives.categorical_crossentropy(deterministic_prediction, flat_cap_out_var)[flat_mask_var.nonzero()])
     deterministic_order_embedding_loss = T.pow(T.maximum(0, deterministic_captions - im_features), 2).sum()
     deterministic_total_loss = deterministic_loss + ORDER_VIOLATION_COEFF * deterministic_order_embedding_loss
 
@@ -211,8 +214,6 @@ if __name__ == '__main__':
 
         if e <= ADAM_EPOCHS:
             train_fun = adam_train_fun
-            RESNET_ADAM_LR.set_value(np.float32(RESNET_ADAM_LR.get_value() * EPOCH_LR_COEFF))
-            RECURR_ADAM_LR.set_value(np.float32(RECURR_ADAM_LR.get_value() * EPOCH_LR_COEFF))
             logger.info("Training with the Adam update function")
             logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_ADAM_LR.get_value(), RECURR_ADAM_LR.get_value()))
         else:
@@ -226,8 +227,9 @@ if __name__ == '__main__':
                 while gc.collect() > 0:
                     pass
             train_fun = sgdm_train_fun
-            RESNET_SGDM_LR.set_value(np.float32(RESNET_SGDM_LR.get_value() * EPOCH_LR_COEFF))
-            RECURR_SGDM_LR.set_value(np.float32(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF))
+            if e % 5 == 0:
+                RESNET_SGDM_LR.set_value(np.float32(RESNET_SGDM_LR.get_value() * EPOCH_LR_COEFF))
+                RECURR_SGDM_LR.set_value(np.float32(RECURR_SGDM_LR.get_value() * EPOCH_LR_COEFF))
             logger.info("Training with the SGDM update function")
             logger.info("ResNet LR: {}, Recurrent LR: {}".format(RESNET_SGDM_LR.get_value(), RECURR_SGDM_LR.get_value()))
         mb = 0
