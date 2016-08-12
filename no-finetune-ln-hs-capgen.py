@@ -178,6 +178,9 @@ if __name__ == '__main__':
         det_total_loss_values[e] = []
         det_order_embedding_loss_values[e] = []
 
+        if e % 5 == 0:
+            RECURR_LR.set_value(RECURR_LR.get_value() * EPOCH_LR_COEFF)
+
         logger.info("Starting training on epoch {} with LR = {}".format(e, RECURR_LR.get_value()))
         mb = 0
         now = datetime.now()
@@ -188,8 +191,6 @@ if __name__ == '__main__':
             order_embedding_loss_values[e].append(oe)
             recurrent_norm_values[e].append(recn)
             mb += 1
-
-        RECURR_LR.set_value(RECURR_LR.get_value() * EPOCH_LR_COEFF)
 
         logger.info("Training epoch {} took {}.".format(e, datetime.now() - now))
         logger.info("Epoch {} results:".format(e))
