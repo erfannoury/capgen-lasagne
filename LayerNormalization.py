@@ -2,6 +2,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 import lasagne
+from lasagne.layers import Layer
 
 __all__ = [
     "LayerNormalizationLayer"
