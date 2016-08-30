@@ -232,6 +232,7 @@ if __name__ == '__main__':
         logger.info("Epoch {} validation results:".format(e))
         logger.info("\t\tValidation mean total loss: {}".format(np.mean(validation_total_loss_values[-mb:])))
         logger.info("\t\tValidation mean order-embedding loss: {}".format(np.mean(validation_order_embedding_loss_values[-mb:])))
+        logger.info("\t\tValidation mean l2 value: {}".format(np.mean(validation_l2_values[-mb:])))
 
         validation_losses.append(np.mean(validation_total_loss_values[-mb:]))
 
