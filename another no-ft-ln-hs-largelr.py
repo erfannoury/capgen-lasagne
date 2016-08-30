@@ -150,8 +150,7 @@ if __name__ == '__main__':
     deterministic_captions = lasagne.layers.get_output(l_slice, deterministic=True)
     deterministic_loss = T.mean(lasagne.objectives.categorical_crossentropy(deterministic_prediction, flat_cap_out_var)[flat_mask_var.nonzero()])
     deterministic_order_embedding_loss = T.pow(T.maximum(0, deterministic_captions - im_features), 2).mean()
-    deterministic_l2 = lasagne.regularization.regularize_network_params(l_hs, lasagne.regularization.l2, 
-                                                {'regularizable':True, 'deterministic':True})
+    deterministic_l2 = lasagne.regularization.regularize_network_params(l_hs, lasagne.regularization.l2)
     deterministic_total_loss = deterministic_loss + ORDER_VIOLATION_COEFF * deterministic_order_embedding_loss \
                                + L2_COEFF * deterministic_l2
 
