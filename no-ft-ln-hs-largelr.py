@@ -68,10 +68,10 @@ if __name__ == '__main__':
     EMBEDDING_SIZE = 300
     WORD_SIZE = len(idx2word)
     DENSE_SIZE = 1024
-    ORDER_VIOLATION_COEFF = 0.2
+    ORDER_VIOLATION_COEFF = 1.0
     RNN_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
-    RECURR_LR = theano.shared(np.float32(0.01), 'recurrent lr')
+    RECURR_LR = theano.shared(np.float32(0.001), 'recurrent lr')
     EPOCH_LR_COEFF = np.float32(0.5)
     NUM_EPOCHS = 15
     validation_losses = []
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     cap_in_var = T.imatrix('cap_in')    # batch size, seq len
     mask_var = T.bmatrix('mask_var')    # batch size, seq len
     l_hid = lasagne.layers.InputLayer((None, HIDDEN_SIZE), input_var=im_features, name="l_hid")
-    l_lnhid = LayerNormalizationLayer(l_hid, 1, name="l_lnhid")
+#    l_lnhid = LayerNormalizationLayer(l_hid, 1, alpha=lasagne.init.Constant(0.1), name="l_lnhid")
     gate = lasagne.layers.Gate(W_in=lasagne.init.Normal(0.02), W_hid=lasagne.init.Orthogonal(),
                                W_cell=lasagne.init.Normal(), b=lasagne.init.Constant(0.0))
     cell_gate = lasagne.layers.Gate(W_in=lasagne.init.Normal(0.02), W_hid=lasagne.init.Orthogonal(),
@@ -100,10 +100,10 @@ if __name__ == '__main__':
     l_mask = lasagne.layers.InputLayer((None, None), mask_var, name="l_mask")
     l_emb = lasagne.layers.EmbeddingLayer(l_in, input_size=WORD_SIZE, output_size=EMBEDDING_SIZE, name="l_emb")
     l_lstm = LNLSTMLayer(l_emb, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
-                                    outgate=gate, hid_init=l_lnhid, peepholes=True, grad_clipping=RNN_GRAD_CLIP,
+                                    outgate=gate, hid_init=l_hid, peepholes=False, grad_clipping=RNN_GRAD_CLIP,
                                     mask_input=l_mask, precompute_input=False,
                                     alpha_init=lasagne.init.Constant(0.1), # as suggested by Ryan Kiros on Twitter
-                                    normalize_cell=True,
+                                    normalize_cell=False,
                                     name="l_lstm") # batch size, seq len, hidden size
     l_reshape = lasagne.layers.ReshapeLayer(l_lstm, (-1, [2]), name="l_reshape") # batch size * seq len, hidden size
     l_fc = lasagne.layers.DenseLayer(l_reshape, DENSE_SIZE, b=lasagne.init.Constant(5.0),
@@ -151,9 +151,9 @@ if __name__ == '__main__':
     recurrent_params = lasagne.layers.get_all_params(l_hs, trainable=True)
     recurrent_grads = T.grad(total_loss, recurrent_params)
     recurrent_grads, recurrent_norm = lasagne.updates.total_norm_constraint(recurrent_grads, TOTAL_MAX_NORM, return_norm=True)
-    recurrent_updates = lasagne.updates.adam(recurrent_grads, recurrent_params, learning_rate=RECURR_LR)
+    recurrent_updates = lasagne.updates.rmsprop(recurrent_grads, recurrent_params, learning_rate=RECURR_LR)
 
-    logger.info("Creating the Theano function for Adam update")
+    logger.info("Creating the Theano function for RMSProp update")
     train_fun = theano.function([resnet['input'].input_var, cap_in_var, mask_var, cap_out_var],
                                      [total_loss, order_embedding_loss, recurrent_norm],
                                      updates=recurrent_updates)
@@ -176,8 +176,8 @@ if __name__ == '__main__':
         logger.info("Starting epoch".format(e))
 
         if len(validation_losses) > 2 and \
-           validation_losses[-3] < validation_losses[-2] and \
-           validation_losses[-3] < validation_losses[-1]:
+           validation_losses[-3] < validation_losses[-1] and \
+           validation_losses[-2] < validation_losses[-1]:
             RECURR_LR.set_value(RECURR_LR.get_value() * EPOCH_LR_COEFF)
             logger.info("Lowering the learning rate to {}".format(RECURR_LR.get_value()))
 
