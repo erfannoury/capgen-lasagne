@@ -15,6 +15,7 @@ import itertools
 from itertools import izip_longest
 import time
 from time import sleep
+from datetime import datetime
 import cPickle as pickle
 from pycocotools.coco import COCO
 from nltk.tokenize import TreebankWordTokenizer
@@ -86,9 +87,9 @@ class COCOCaptionDataset():
         self.buckets = buckets
         self.word2idx = word2idx
         self.bucket_minibatch_sizes = bucket_minibatch_sizes
-        self.buffer_size = 5
-        self.input_qsize = 16
-        self.min_input_qsize = 10
+        self.buffer_size = 16
+        self.input_qsize = 64
+        self.min_input_qsize = 16
         self.total_max = 0
         self.mean_im = mean_im
         self.tokenizer = TreebankWordTokenizer()
@@ -220,6 +221,9 @@ if __name__ == '__main__':
     for e in xrange(2):
         print("Starting epoch", e+1)
         i = 0
+	now = datetime.now()
         for im, capin, capout in coco:
             i += 1
+            print(datetime.now() - now)
             print(i, '\t', im.shape, capin.shape, capout.shape)
+            now = datetime.now()
