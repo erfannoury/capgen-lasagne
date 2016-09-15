@@ -18,6 +18,7 @@ from resnet50 import build_model
 from CustomLSTMLayer import LNLSTMLayer
 from HierarchicalSoftmax import HierarchicalSoftmaxLayer
 from LayerNormalization import LayerNormalizationLayer
+sys.setrecursionlimit(10000)
 
 if __name__ == '__main__':
     logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ if __name__ == '__main__':
         word2idx[w] = i+3
     idx2word = map(lambda x: x[0], sorted(word2idx.items(), key=lambda x: x[1]))
 
-    bucket_minibatch_sizes = {16:128, 32:64, 64:32}
+    bucket_minibatch_sizes = {16:256, 32:128, 64:64}
 
 
     logger.info('Creating global variables')
@@ -68,7 +69,7 @@ if __name__ == '__main__':
     EMBEDDING_SIZE = 300
     WORD_SIZE = len(idx2word)
     DENSE_SIZE = 1024
-    ORDER_VIOLATION_COEFF = 1.0
+    ORDER_VIOLATION_COEFF = 10.0
     L2_COEFF = 1e-3
     RNN_GRAD_CLIP = 64
     TOTAL_MAX_NORM = 128
