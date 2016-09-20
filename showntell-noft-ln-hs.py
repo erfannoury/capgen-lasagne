@@ -101,21 +101,20 @@ if __name__ == '__main__':
     l_im_in = lasagne.layers.InputLayer((None, HIDDEN_SIZE), input_var=im_features, name="l_im_in")
     l_im_emb = lasagne.layers.DenseLayer(l_im_in, EMBEDDING_SIZE, b=lasagne.init.Constant(1.0), name="l_im_emb")
     l_im_reshape = lasagne.layers.ReshapeLayer(l_im_emb, ([0], 1, [1]), name="l_im_reshape")
-    l_im_mask = lasagne.layers.InputLayer((None, 1), input_var=T.ones((im_features.shape[0], 1), dtype=np.float32))
 
     # Caption embedding layer
     l_in = lasagne.layers.InputLayer((None, None), cap_in_var, name="l_in")
     l_mask = lasagne.layers.InputLayer((None, None), mask_var, name="l_mask")
     l_emb = lasagne.layers.EmbeddingLayer(l_in, input_size=WORD_SIZE, output_size=EMBEDDING_SIZE, name="l_emb")
 
-    # Sequence and mask concatentation
+    # Embeddings concatentation and mask padding
     l_concat_embs = lasagne.layers.ConcatLayer([l_im_reshape, l_in], axis=1, name="l_concat_embs")
-    l_concat_masks = lasagne.layers.ConcatLayer([l_im_mask, l_mask], axis=1, name="l_concat_masks")
+    l_mask_pad = lasagne.layers.PadLayer(l_mask, [(1, 0)], val=1, batch_ndim=1, name="l_mask_pad")
 
     # LSTM layer and the rest
     l_lstm = LNLSTMLayer(l_concat_embs, HIDDEN_SIZE, ingate=gate, forgetgate=forget_gate, cell=cell_gate,
                                     outgate=gate, peepholes=False, grad_clipping=RNN_GRAD_CLIP,
-                                    mask_input=l_concat_masks, precompute_input=False,
+                                    mask_input=l_mask_pad, precompute_input=False,
                                     alpha_init=lasagne.init.Constant(0.1), # as suggested by Ryan Kiros on Twitter
                                     normalize_cell=False,
                                     name="l_lstm") # batch size, seq len, hidden size
